@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Remind</string>
+    <string name="hint">Remind me to…</string>
+    <string name="ok">OK</string>
+    <string name="channel_name">Reminders</string>
+    <string name="shortcut_10m">In 10 min</string>
+    <string name="shortcut_30m">In 30 min</string>
+    <string name="shortcut_1h">In 1 hour</string>
+</resources>

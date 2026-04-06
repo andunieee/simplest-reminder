@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="in_10m"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut"
+        android:shortcutShortLabel="@string/shortcut_10m">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.andunie.reminder.MainActivity"
+            android:targetPackage="com.andunie.reminder">
+            <extra android:name="minutes" android:value="10" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="in_30m"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut"
+        android:shortcutShortLabel="@string/shortcut_30m">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.andunie.reminder.MainActivity"
+            android:targetPackage="com.andunie.reminder">
+            <extra android:name="minutes" android:value="30" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="in_1h"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut"
+        android:shortcutShortLabel="@string/shortcut_1h">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.andunie.reminder.MainActivity"
+            android:targetPackage="com.andunie.reminder">
+            <extra android:name="minutes" android:value="60" />
+        </intent>
+    </shortcut>
+</shortcuts>
