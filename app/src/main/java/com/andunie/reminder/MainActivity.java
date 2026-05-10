@@ -72,10 +72,16 @@ public class MainActivity extends Activity {
         root.addView(bar, new LinearLayout.LayoutParams(-1, -2));
         // Edge-to-edge is enforced on targetSdk 35+: keep content clear of system bars and keyboard.
         root.setOnApplyWindowInsetsListener((v, insets) -> {
-            android.graphics.Insets in = insets.getInsets(
-                    WindowInsets.Type.systemBars() | WindowInsets.Type.ime());
-            v.setPadding(in.left + pad, in.top + pad, in.right + pad, in.bottom + pad / 2);
-            return WindowInsets.CONSUMED;
+            if (Build.VERSION.SDK_INT >= 30) {
+                android.graphics.Insets in = insets.getInsets(
+                        WindowInsets.Type.systemBars() | WindowInsets.Type.ime());
+                v.setPadding(in.left + pad, in.top + pad, in.right + pad, in.bottom + pad / 2);
+                return WindowInsets.CONSUMED;
+            }
+            // API 26-29: WindowInsets.Type doesn't exist; system window insets include the IME.
+            v.setPadding(insets.getSystemWindowInsetLeft() + pad, insets.getSystemWindowInsetTop() + pad,
+                    insets.getSystemWindowInsetRight() + pad, insets.getSystemWindowInsetBottom() + pad / 2);
+            return insets.consumeSystemWindowInsets();
         });
         setContentView(root);
 
@@ -130,8 +136,7 @@ public class MainActivity extends Activity {
      * looks exactly like "the reminder never fired". Say so instead of failing quietly.
      */
     private void warnIfBlocked() {
-        android.app.NotificationManager nm = getSystemService(android.app.NotificationManager.class);
-        if (nm != null && !nm.areNotificationsEnabled()) {
+        if (Reminders.notificationsBlocked(this)) {
             Toast.makeText(this, "Notifications are off — reminders won't be shown",
                     Toast.LENGTH_LONG).show();
         }

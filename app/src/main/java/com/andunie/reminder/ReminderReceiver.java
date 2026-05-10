@@ -10,12 +10,12 @@ public class ReminderReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context ctx, Intent intent) {
         int id = intent.getIntExtra(Reminders.EXTRA_ID, -1);
-        Log.i("Remind", "alarm delivered #" + id);
+        Log.i("SimpleReminder", "alarm delivered #" + id);
         if (id < 0) return;
         try {
             Reminders.fire(ctx, id);
         } catch (RuntimeException e) {
-            Log.e("Remind", "could not post reminder #" + id, e);
+            Log.e("SimpleReminder", "could not post reminder #" + id, e);
         }
     }
 }

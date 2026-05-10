@@ -1,4 +1,6 @@
-# Remind
+# Simple Reminder
+
+<img src="art/logo.svg" width="96" alt="Simple Reminder logo">
 
 A single text box. Type, pick 10 min / 30 min / 1 hour, press OK. The app closes immediately;
 an `AlarmManager` alarm wakes the device later and posts a notification.
@@ -16,27 +18,31 @@ an `AlarmManager` alarm wakes the device later and posts a notification.
 - `BootReceiver` re-arms every stored reminder after `BOOT_COMPLETED` and `MY_PACKAGE_REPLACED`.
 - The alarm receiver posts the notification; the app does not need to be running or in recents.
 
-## Build
+## Build & install
+
+Needs [`just`](https://github.com/casey/just) and `adb`. Every recipe that installs targets **all**
+connected devices.
 
 ```sh
-./gradlew assembleRelease      # app/build/outputs/apk/release/app-release.apk
+just install        # build the release APK and install it on every connected phone
+just install-only   # install the already-built APK without rebuilding
+just run            # install, then open the app on every phone
+just uninstall      # remove it from every phone
+just logs [serial]  # adb logcat -s SimpleReminder
+just alarms         # pending alarms for the app on every phone
 ```
 
-The release build is signed with the debug key so it installs as-is.
+The release build is signed with the debug key so it installs as-is
+(`app/build/outputs/apk/release/app-release.apk`).
 
-## Install / verify
+## Verify
 
-```sh
-adb install -r app/build/outputs/apk/release/app-release.apk
-
-# quick check without waiting 10 minutes: long-press OK -> fires in 5 s
-adb logcat -s Remind           # "scheduled #1 at ...", "alarm delivered #1", "notified #1"
-adb shell dumpsys alarm | grep -i andunie
-```
+Long-press OK to schedule a reminder 5 s out through the same alarm path, then check
+`just logs`: "scheduled #1 at ...", "alarm delivered #1", "notified #1".
 
 If `dumpsys alarm` lists the alarm but no notification appears, the alarm path works and the
 notification is being blocked (app-level notifications off, or the `reminders` channel disabled
-in system settings). `Remind` logs that case too: "notifications are disabled for this app".
+in system settings). `SimpleReminder` logs that case too: "notifications are disabled for this app".
 
 Force-stopping an app (`Settings > Apps > Force stop`, or some OEM "clear all" actions) cancels
 all of its alarms; nothing a regular app can do survives that. The boot/update receiver re-arms

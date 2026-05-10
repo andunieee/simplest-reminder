@@ -11,7 +11,7 @@ public class BootReceiver extends BroadcastReceiver {
     public void onReceive(Context ctx, Intent intent) {
         String a = intent.getAction();
         if (Intent.ACTION_BOOT_COMPLETED.equals(a) || Intent.ACTION_MY_PACKAGE_REPLACED.equals(a)) {
-            Log.i("Remind", "re-arming alarms after " + a);
+            Log.i("SimpleReminder", "re-arming alarms after " + a);
             Reminders.rescheduleAll(ctx);
         }
     }

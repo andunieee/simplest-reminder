@@ -24,7 +24,7 @@ final class Reminders {
     /** Preset delays in minutes, in display order. Keep in sync with res/xml/shortcuts.xml. */
     static final int[] PRESETS_MIN = {10, 30, 60};
 
-    private static final String TAG = "Remind";
+    private static final String TAG = "SimpleReminder";
     private static final String PREFS = "reminders";
     private static final String KEY_NEXT_ID = "next_id";
     private static final String KEY_PREFIX = "r:";
@@ -131,6 +131,15 @@ final class Reminders {
                 .build();
         nm.notify(id, n);
         Log.i(TAG, "notified #" + id);
+    }
+
+    /** True when {@code notify()} would be a silent no-op: app notifications or the channel are off. */
+    static boolean notificationsBlocked(Context ctx) {
+        NotificationManager nm = ctx.getSystemService(NotificationManager.class);
+        if (nm == null) return false;
+        if (!nm.areNotificationsEnabled()) return true;
+        NotificationChannel ch = nm.getNotificationChannel(CHANNEL);
+        return ch != null && ch.getImportance() == NotificationManager.IMPORTANCE_NONE;
     }
 
     static void ensureChannel(Context ctx, NotificationManager nm) {
