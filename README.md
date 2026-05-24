@@ -39,6 +39,11 @@ just alarms         # pending alarms for the app on every phone
 The release build is signed with the debug key so it installs as-is
 (`app/build/outputs/apk/release/app-release.apk`).
 
+## Releases
+
+Pushing a tag starting with `v` (for example `v1.2`) builds the release APK on GitHub Actions and
+publishes it as an asset on that tag's release.
+
 ## Verify
 
 Long-press OK to schedule a reminder 5 s out through the same alarm path, then check
