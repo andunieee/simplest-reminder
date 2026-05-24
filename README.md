@@ -1,6 +1,6 @@
-# Simple Reminder
+# Simplest Reminder
 
-<img src="art/logo.svg" width="96" alt="Simple Reminder logo">
+<img src="art/logo.svg" width="96" alt="Simplest Reminder logo">
 
 A single text box. Type, pick 10 min / 30 min / 1 hour, optionally tap 🔔 to make it silent (🔕),
 press OK. The app closes immediately; an `AlarmManager` alarm wakes the device later and posts a

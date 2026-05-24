@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "simple-reminder"
+rootProject.name = "simplest-reminder"
 include(":app")

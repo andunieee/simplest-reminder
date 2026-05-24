@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Simple Reminder</string>
+    <string name="app_name">Simplest Reminder</string>
     <string name="hint">Remind me to…</string>
     <string name="ok">OK</string>
     <string name="channel_name">Reminders</string>
