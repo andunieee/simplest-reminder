@@ -28,7 +28,11 @@ final class Reminders {
     private static final String PREFS = "reminders";
     private static final String KEY_NEXT_ID = "next_id";
     private static final String KEY_PREFIX = "r:";
+    private static final String KEY_SILENT = "silent";
     private static final String CHANNEL = "reminders";
+    private static final String CHANNEL_SILENT = "reminders_silent";
+    /** Appended to an entry's timestamp to mark a silent reminder: "<epoch ms>,s". */
+    private static final String SILENT_SUFFIX = ",s";
     static final String EXTRA_ID = "id";
 
     private Reminders() {}
@@ -37,28 +41,34 @@ final class Reminders {
         return minutes < 60 ? minutes + " min" : (minutes / 60) + (minutes == 60 ? " hour" : " hours");
     }
 
+    /** The sound choice of the most recently scheduled reminder; the default for the next one. */
+    static boolean lastSilent(Context ctx) {
+        return prefs(ctx).getBoolean(KEY_SILENT, false);
+    }
+
     /**
      * Stores the reminder and arms the alarm.
      *
      * @return the epoch millisecond at which it will fire, or -1 if the alarm could not be armed.
      */
-    static long schedule(Context ctx, String text, int minutes) {
-        return scheduleAt(ctx, text, System.currentTimeMillis() + minutes * 60_000L);
+    static long schedule(Context ctx, String text, int minutes, boolean silent) {
+        return scheduleAt(ctx, text, System.currentTimeMillis() + minutes * 60_000L, silent);
     }
 
     /** Schedules after an arbitrary delay; used by the long-press self-test. */
-    static long scheduleIn(Context ctx, String text, long delayMs) {
-        return scheduleAt(ctx, text, System.currentTimeMillis() + delayMs);
+    static long scheduleIn(Context ctx, String text, long delayMs, boolean silent) {
+        return scheduleAt(ctx, text, System.currentTimeMillis() + delayMs, silent);
     }
 
-    private static long scheduleAt(Context ctx, String text, long at) {
+    private static long scheduleAt(Context ctx, String text, long at, boolean silent) {
         SharedPreferences prefs = prefs(ctx);
         int id = prefs.getInt(KEY_NEXT_ID, 1);
         // commit() (not apply()) so the entry is on disk before this process can be torn down.
-        // Stored as "<epoch ms>\n<text>" so reminders survive reboots.
+        // Stored as "<epoch ms>[,s]\n<text>" so reminders survive reboots.
         boolean stored = prefs.edit()
                 .putInt(KEY_NEXT_ID, id + 1)
-                .putString(KEY_PREFIX + id, at + "\n" + text)
+                .putBoolean(KEY_SILENT, silent)
+                .putString(KEY_PREFIX + id, at + (silent ? SILENT_SUFFIX : "") + "\n" + text)
                 .commit();
         if (!stored) {
             Log.e(TAG, "could not persist reminder " + id);
@@ -68,7 +78,7 @@ final class Reminders {
             prefs.edit().remove(KEY_PREFIX + id).commit();
             return -1;
         }
-        Log.i(TAG, "scheduled #" + id + " at " + at + " (in " + (at - System.currentTimeMillis()) + " ms)");
+        Log.i(TAG, "scheduled #" + id + (silent ? " (silent)" : "") + " at " + at + " (in " + (at - System.currentTimeMillis()) + " ms)");
         return at;
     }
 
@@ -89,7 +99,7 @@ final class Reminders {
             int nl = v.indexOf('\n');
             if (nl <= 0) continue;
             try {
-                setAlarm(ctx, id, Long.parseLong(v.substring(0, nl)));
+                setAlarm(ctx, id, parseAt(v.substring(0, nl)));
             } catch (NumberFormatException ignored) {
                 // Corrupt entry; drop it so it cannot wedge the rest.
                 prefs(ctx).edit().remove(key).commit();
@@ -106,10 +116,12 @@ final class Reminders {
         }
         // Remove before notifying so a retry can't double-post.
         prefs.edit().remove(KEY_PREFIX + id).commit();
-        String text = v.substring(v.indexOf('\n') + 1);
+        int nl = v.indexOf('\n');
+        String text = v.substring(nl + 1);
+        boolean silent = nl > 0 && v.substring(0, nl).endsWith(SILENT_SUFFIX);
 
         NotificationManager nm = ctx.getSystemService(NotificationManager.class);
-        ensureChannel(ctx, nm);
+        ensureChannels(ctx, nm);
         if (!nm.areNotificationsEnabled()) {
             Log.e(TAG, "fired #" + id + " but notifications are disabled for this app");
         }
@@ -119,7 +131,7 @@ final class Reminders {
         PendingIntent content = PendingIntent.getActivity(
                 ctx, id, open, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
 
-        Notification n = new Notification.Builder(ctx, CHANNEL)
+        Notification n = new Notification.Builder(ctx, silent ? CHANNEL_SILENT : CHANNEL)
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle(text)
                 .setStyle(new Notification.BigTextStyle().bigText(text))
@@ -133,19 +145,39 @@ final class Reminders {
         Log.i(TAG, "notified #" + id);
     }
 
-    /** True when {@code notify()} would be a silent no-op: app notifications or the channel are off. */
-    static boolean notificationsBlocked(Context ctx) {
+    /** True when {@code notify()} would be a no-op: app notifications or the chosen channel are off. */
+    static boolean notificationsBlocked(Context ctx, boolean silent) {
         NotificationManager nm = ctx.getSystemService(NotificationManager.class);
         if (nm == null) return false;
         if (!nm.areNotificationsEnabled()) return true;
-        NotificationChannel ch = nm.getNotificationChannel(CHANNEL);
+        NotificationChannel ch = nm.getNotificationChannel(silent ? CHANNEL_SILENT : CHANNEL);
         return ch != null && ch.getImportance() == NotificationManager.IMPORTANCE_NONE;
     }
 
-    static void ensureChannel(Context ctx, NotificationManager nm) {
-        if (nm.getNotificationChannel(CHANNEL) != null) return;
-        nm.createNotificationChannel(new NotificationChannel(
-                CHANNEL, ctx.getString(R.string.channel_name), NotificationManager.IMPORTANCE_HIGH));
+    /**
+     * A channel's sound can't be changed by the app once created, so sound vs. silent is two
+     * channels. The silent one keeps high importance so it still pops up, just without sound
+     * or vibration.
+     */
+    static void ensureChannels(Context ctx, NotificationManager nm) {
+        if (nm.getNotificationChannel(CHANNEL) == null) {
+            nm.createNotificationChannel(new NotificationChannel(
+                    CHANNEL, ctx.getString(R.string.channel_name), NotificationManager.IMPORTANCE_HIGH));
+        }
+        if (nm.getNotificationChannel(CHANNEL_SILENT) == null) {
+            NotificationChannel silent = new NotificationChannel(CHANNEL_SILENT,
+                    ctx.getString(R.string.channel_silent_name), NotificationManager.IMPORTANCE_HIGH);
+            silent.setSound(null, null);
+            silent.enableVibration(false);
+            nm.createNotificationChannel(silent);
+        }
+    }
+
+    /** Parses an entry header, "<epoch ms>" or "<epoch ms>,s". */
+    private static long parseAt(String header) {
+        return Long.parseLong(header.endsWith(SILENT_SUFFIX)
+                ? header.substring(0, header.length() - SILENT_SUFFIX.length())
+                : header);
     }
 
     /** True when the OS will honour an exact, doze-proof alarm for this app. */

@@ -17,7 +17,7 @@ import android.widget.LinearLayout;
 import android.widget.Toast;
 
 /**
- * The whole UI: a text box, the preset delays and OK. Built in code with framework widgets only
+ * The whole UI: a text box, a sound toggle, the preset delays and OK. Built in code with framework widgets only
  * (no layout inflation, no support libraries) to keep cold start as fast as possible.
  */
 public class MainActivity extends Activity {
@@ -25,7 +25,9 @@ public class MainActivity extends Activity {
 
     private EditText input;
     private Button[] presetButtons;
+    private Button soundButton;
     private int selected;
+    private boolean silent;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,6 +52,11 @@ public class MainActivity extends Activity {
 
         LinearLayout bar = new LinearLayout(this);
         bar.setGravity(Gravity.CENTER_VERTICAL);
+        // Per-reminder sound choice; starts from whatever the last reminder used.
+        soundButton = new Button(this, null, 0, android.R.style.Widget_Material_Button_Borderless);
+        soundButton.setOnClickListener(v -> setSilent(!silent));
+        bar.addView(soundButton, new LinearLayout.LayoutParams(-2, -2));
+        setSilent(Reminders.lastSilent(this));
         presetButtons = new Button[Reminders.PRESETS_MIN.length];
         for (int i = 0; i < presetButtons.length; i++) {
             Button b = new Button(this, null, 0, android.R.style.Widget_Material_Button_Borderless);
@@ -119,6 +126,12 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void setSilent(boolean s) {
+        silent = s;
+        soundButton.setText(s ? "\uD83D\uDD15" : "\uD83D\uDD14"); // 🔕 / 🔔
+        soundButton.setContentDescription(getString(s ? R.string.sound_off : R.string.sound_on));
+    }
+
     private void submit() {
         if (input.getText().toString().trim().isEmpty()) return;
         if (Build.VERSION.SDK_INT >= 33
@@ -136,7 +149,7 @@ public class MainActivity extends Activity {
      * looks exactly like "the reminder never fired". Say so instead of failing quietly.
      */
     private void warnIfBlocked() {
-        if (Reminders.notificationsBlocked(this)) {
+        if (Reminders.notificationsBlocked(this, silent)) {
             Toast.makeText(this, "Notifications are off — reminders won't be shown",
                     Toast.LENGTH_LONG).show();
         }
@@ -154,7 +167,7 @@ public class MainActivity extends Activity {
 
     private void schedule() {
         int minutes = Reminders.PRESETS_MIN[selected];
-        long at = Reminders.schedule(this, input.getText().toString().trim(), minutes);
+        long at = Reminders.schedule(this, input.getText().toString().trim(), minutes, silent);
         if (at < 0) {
             Toast.makeText(this, "Couldn't schedule the reminder", Toast.LENGTH_LONG).show();
             return;
@@ -171,7 +184,7 @@ public class MainActivity extends Activity {
         warnIfBlocked();
         String text = input.getText().toString().trim();
         if (text.isEmpty()) text = "Test reminder";
-        long at = Reminders.scheduleIn(this, text, 5_000L);
+        long at = Reminders.scheduleIn(this, text, 5_000L, silent);
         if (at < 0) {
             Toast.makeText(this, "Couldn't schedule the reminder", Toast.LENGTH_LONG).show();
             return true;
