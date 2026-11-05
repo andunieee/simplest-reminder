@@ -21,14 +21,16 @@ import java.util.Map;
  * alarm still wakes the device, starts {@link ReminderReceiver} and posts the notification.
  */
 final class Reminders {
-    /** Preset delays in minutes, in display order. Keep in sync with res/xml/shortcuts.xml. */
-    static final int[] PRESETS_MIN = {10, 30, 60};
+    /** Default preset delays in minutes, in display order. Keep in sync with res/xml/shortcuts.xml. */
+    static final int[] DEFAULT_PRESETS_MIN = {10, 30, 60};
 
     private static final String TAG = "SimpleReminder";
     private static final String PREFS = "reminders";
     private static final String KEY_NEXT_ID = "next_id";
     private static final String KEY_PREFIX = "r:";
     private static final String KEY_SILENT = "silent";
+    /** The preset delays as edited by long-pressing them: comma-separated minutes. */
+    private static final String KEY_PRESETS = "presets";
     private static final String CHANNEL = "reminders";
     private static final String CHANNEL_SILENT = "reminders_silent";
     /** Appended to an entry's timestamp to mark a silent reminder: "<epoch ms>,s". */
@@ -38,7 +40,33 @@ final class Reminders {
     private Reminders() {}
 
     static String label(int minutes) {
-        return minutes < 60 ? minutes + " min" : (minutes / 60) + (minutes == 60 ? " hour" : " hours");
+        return Times.duration(minutes * 60_000L);
+    }
+
+    /** The preset delays in minutes, in display order; the defaults until one is edited. */
+    static int[] presets(Context ctx) {
+        int[] presets = DEFAULT_PRESETS_MIN.clone();
+        String stored = prefs(ctx).getString(KEY_PRESETS, null);
+        if (stored == null) return presets;
+        String[] parts = stored.split(",");
+        for (int i = 0; i < presets.length && i < parts.length; i++) {
+            try {
+                int m = Integer.parseInt(parts[i]);
+                if (m > 0) presets[i] = m;
+            } catch (NumberFormatException ignored) {
+                // Keep the default for a corrupt slot.
+            }
+        }
+        return presets;
+    }
+
+    /** Replaces one preset delay. */
+    static void setPreset(Context ctx, int idx, int minutes) {
+        int[] presets = presets(ctx);
+        presets[idx] = minutes;
+        StringBuilder sb = new StringBuilder();
+        for (int m : presets) sb.append(sb.length() == 0 ? "" : ",").append(m);
+        prefs(ctx).edit().putString(KEY_PRESETS, sb.toString()).apply();
     }
 
     /** The sound choice of the most recently scheduled reminder; the default for the next one. */
@@ -55,12 +83,8 @@ final class Reminders {
         return scheduleAt(ctx, text, System.currentTimeMillis() + minutes * 60_000L, silent);
     }
 
-    /** Schedules after an arbitrary delay; used by the long-press self-test. */
-    static long scheduleIn(Context ctx, String text, long delayMs, boolean silent) {
-        return scheduleAt(ctx, text, System.currentTimeMillis() + delayMs, silent);
-    }
-
-    private static long scheduleAt(Context ctx, String text, long at, boolean silent) {
+    /** Schedules at an arbitrary time; used by the long-press custom time. */
+    static long scheduleAt(Context ctx, String text, long at, boolean silent) {
         SharedPreferences prefs = prefs(ctx);
         int id = prefs.getInt(KEY_NEXT_ID, 1);
         // commit() (not apply()) so the entry is on disk before this process can be torn down.
