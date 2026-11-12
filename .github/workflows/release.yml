@@ -55,3 +55,28 @@ jobs:
             --title "Simplest Reminder $GITHUB_REF_NAME" \
             --generate-notes \
             --verify-tag
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: packaging/zapstore/go.mod
+          cache-dependency-path: packaging/zapstore/go.sum
+
+      - name: Publish to Zapstore
+        env:
+          SIGN_WITH: ${{ secrets.ZAPSTORE_OWNER_NSEC }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SIGN_WITH}" ]; then
+            echo "::warning::ZAPSTORE_OWNER_NSEC is not set, skipping the Zapstore publish"
+            exit 0
+          fi
+          if [ -z "${ANDROID_KEYSTORE:-}" ]; then
+            echo "::warning::the release keystore is not configured, skipping the Zapstore publish"
+            exit 0
+          fi
+          (cd packaging/zapstore && go build -o "${RUNNER_TEMP}/zapstore" .)
+          "${RUNNER_TEMP}/zapstore"

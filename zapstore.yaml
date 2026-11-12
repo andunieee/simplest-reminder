@@ -1,0 +1,24 @@
+# Zapstore listing for the Android build. Published by the "Publish to Zapstore"
+# step in .github/workflows/release.yml after the APK is attached to the release.
+repository: https://github.com/andunieee/simplest-reminder
+release_filter: '^v[0-9]+\.[0-9]+(\.[0-9]+)?$'
+match: '^simplest-reminder-.*\.apk$'
+
+name: Simplest Reminder
+summary: Type a reminder, pick a delay, press OK.
+description: |
+  **Simplest Reminder** does one thing: you type what to remember, pick
+  10 minutes / 30 minutes / 1 hour, and press OK. The notification arrives on
+  time.
+
+  Touch and hold a preset to change its delay, and tap the bell to switch a
+  reminder between silent and loud. Touch and hold OK to give one reminder a
+  custom time, either relative (`45m`, `1h30`, `in 3 days`) or absolute
+  (`14:30`, `9am`).
+website: https://github.com/andunieee/simplest-reminder
+tags: [reminders, productivity, minimal]
+
+icon: ./art/icon.png
+images:
+  - ./screenshot.png
+metadata_sources: [github]
