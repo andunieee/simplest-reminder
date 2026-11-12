@@ -11,6 +11,8 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      BUILD_TOOLS_VERSION: "36.0.0"
     steps:
       - uses: actions/checkout@v4
 
@@ -21,7 +23,7 @@ jobs:
 
       - uses: android-actions/setup-android@v3
         with:
-          packages: "platforms;android-36 build-tools;36.0.0"
+          packages: "platforms;android-36 build-tools;${{ env.BUILD_TOOLS_VERSION }}"
 
       - uses: gradle/actions/setup-gradle@v4
 
@@ -41,9 +43,12 @@ jobs:
 
       - name: Verify APK signature
         run: |
-          apksigner verify --print-certs app/build/outputs/apk/release/app-release.apk
-          ! apksigner verify --print-certs app/build/outputs/apk/release/app-release.apk \
-            | grep -q "CN=Android Debug"
+          # setup-android only puts cmdline-tools and platform-tools on PATH,
+          # so call apksigner from the build-tools directory by full path.
+          apksigner="$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner"
+          apk="app/build/outputs/apk/release/app-release.apk"
+          "$apksigner" verify --print-certs "$apk"
+          ! "$apksigner" verify --print-certs "$apk" | grep -q "CN=Android Debug"
 
       - name: Create GitHub release
         env:
