@@ -2,6 +2,12 @@ plugins {
     id("com.android.application")
 }
 
+// Release signing comes from the environment, which is how both the CI
+// workflow (decoded from repository secrets) and ~/android-release/env.sh
+// (local builds) provide the keystore.
+val keystorePath = System.getenv("ANDROID_KEYSTORE")
+val hasReleaseKey = !keystorePath.isNullOrBlank()
+
 android {
     namespace = "com.andunie.reminder"
     compileSdk = 36
@@ -14,13 +20,31 @@ android {
         versionName = "1.1"
     }
 
+    signingConfigs {
+        if (hasReleaseKey) {
+            create("release") {
+                storeFile = rootProject.file(keystorePath!!)
+                storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("ANDROID_KEY_ALIAS")
+                keyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
-            // Signed with the debug key so the release APK is installable as-is.
-            signingConfig = signingConfigs.getByName("debug")
+            if (hasReleaseKey) {
+                signingConfig = signingConfigs.getByName("release")
+            } else {
+                logger.warn(
+                    "ANDROID_KEYSTORE is not set: the release APK will be signed with the " +
+                        "debug key. Source ~/android-release/env.sh to sign with the release key."
+                )
+                signingConfig = signingConfigs.getByName("debug")
+            }
         }
     }
 

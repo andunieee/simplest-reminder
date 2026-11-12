@@ -7,8 +7,13 @@ apk := "app/build/outputs/apk/release/app-release.apk"
 default:
     @just --list
 
-# Build the release APK (signed with the debug key)
+# Build the release APK (signed with the release key when ~/android-release/env.sh exists)
 build:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ -f "$HOME/android-release/env.sh" ]; then
+        . "$HOME/android-release/env.sh"
+    fi
     ./gradlew assembleRelease
 
 # Build, then install on every connected device
