@@ -36,6 +36,10 @@ final class Reminders {
     /** Appended to an entry's timestamp to mark a silent reminder: "<epoch ms>,s". */
     private static final String SILENT_SUFFIX = ",s";
     static final String EXTRA_ID = "id";
+    static final String EXTRA_TEXT = "text";
+    static final String EXTRA_SILENT = "silent";
+    static final String ACTION_SNOOZE = "com.andunie.reminder.SNOOZE";
+    static final String ACTION_EDIT = "com.andunie.reminder.EDIT";
 
     private Reminders() {}
 
@@ -155,7 +159,21 @@ final class Reminders {
         PendingIntent content = PendingIntent.getActivity(
                 ctx, id, open, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
 
+        // Snooze re-arms the same reminder at the first preset; Edit reopens the app prefilled.
+        Intent snooze = new Intent(ctx, ReminderReceiver.class).setAction(ACTION_SNOOZE)
+                .putExtra(EXTRA_ID, id).putExtra(EXTRA_TEXT, text).putExtra(EXTRA_SILENT, silent);
+        PendingIntent snoozePi = PendingIntent.getBroadcast(
+                ctx, id, snooze, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+        Intent edit = new Intent(open).setAction(ACTION_EDIT)
+                .putExtra(EXTRA_ID, id).putExtra(EXTRA_TEXT, text).putExtra(EXTRA_SILENT, silent);
+        PendingIntent editPi = PendingIntent.getActivity(
+                ctx, id, edit, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+
         Notification n = new Notification.Builder(ctx, silent ? CHANNEL_SILENT : CHANNEL)
+                .addAction(new Notification.Action.Builder(null,
+                        ctx.getString(R.string.snooze, label(presets(ctx)[0])), snoozePi).build())
+                .addAction(new Notification.Action.Builder(null,
+                        ctx.getString(R.string.edit), editPi).build())
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle(text)
                 .setStyle(new Notification.BigTextStyle().bigText(text))
@@ -167,6 +185,14 @@ final class Reminders {
                 .build();
         nm.notify(id, n);
         Log.i(TAG, "notified #" + id);
+    }
+
+    /** Notification Snooze button: dismisses the notification and schedules the same text again. */
+    static void snooze(Context ctx, int id, String text, boolean silent) {
+        ctx.getSystemService(NotificationManager.class).cancel(id);
+        if (schedule(ctx, text, presets(ctx)[0], silent) < 0) {
+            Log.e(TAG, "could not snooze #" + id);
+        }
     }
 
     /** True when {@code notify()} would be a no-op: app notifications or the chosen channel are off. */

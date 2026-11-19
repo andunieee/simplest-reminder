@@ -12,6 +12,13 @@ public class ReminderReceiver extends BroadcastReceiver {
         int id = intent.getIntExtra(Reminders.EXTRA_ID, -1);
         Log.i("SimpleReminder", "alarm delivered #" + id);
         if (id < 0) return;
+        if (Reminders.ACTION_SNOOZE.equals(intent.getAction())) {
+            String text = intent.getStringExtra(Reminders.EXTRA_TEXT);
+            if (text != null) {
+                Reminders.snooze(ctx, id, text, intent.getBooleanExtra(Reminders.EXTRA_SILENT, false));
+            }
+            return;
+        }
         try {
             Reminders.fire(ctx, id);
         } catch (RuntimeException e) {

@@ -3,6 +3,7 @@ package com.andunie.reminder;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.NotificationManager;
 import android.app.TimePickerDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -145,6 +146,13 @@ public class MainActivity extends Activity {
      * matches it any more, since the shortcut's label promises that delay.
      */
     private void applyIntent(Intent intent) {
+        // The notification's Edit button: same text and sound choice, ready to be rescheduled.
+        if (Reminders.ACTION_EDIT.equals(intent.getAction())) {
+            getSystemService(NotificationManager.class).cancel(intent.getIntExtra(Reminders.EXTRA_ID, -1));
+            input.setText(intent.getStringExtra(Reminders.EXTRA_TEXT));
+            input.setSelection(input.length());
+            setSilent(intent.getBooleanExtra(Reminders.EXTRA_SILENT, false));
+        }
         int m = presets[0];
         Bundle extras = intent.getExtras();
         Object extra = extras == null ? null : extras.get("minutes");
